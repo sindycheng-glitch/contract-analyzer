@@ -2,9 +2,11 @@ import os
 import io
 import json
 from typing import List
-from dotenv import load_dotenv
-
-load_dotenv()  # 自動讀取 .env 檔
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # 本機開發時讀取 .env 檔
+except ImportError:
+    pass  # Render 雲端不需要，環境變數直接注入
 
 from google import genai
 from google.genai import types
