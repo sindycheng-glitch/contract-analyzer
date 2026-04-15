@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>合約風險分析儀表板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:        #22c55e;
+      --green-dark:   #15803d;
+      --green-light:  #f0fdf4;
+      --green-border: #bbf7d0;
+      --yellow:        #eab308;
+      --yellow-dark:   #a16207;
+      --yellow-light:  #fefce8;
+      --yellow-border: #fef08a;
+      --red:          #ef4444;
+      --red-dark:     #b91c1c;
+      --red-light:    #fef2f2;
+      --red-border:   #fecaca;
+      --blue:         #3b82f6;
+      --blue-dark:    #1d4ed8;
+      --blue-light:   #eff6ff;
+      --blue-border:  #bfdbfe;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+                   "Microsoft JhengHei", sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .logo {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 16px; flex-shrink: 0;
+    }
+    header h1 { font-size: 17px; font-weight: 700; }
+    header nav { margin-left: auto; display: flex; gap: 16px; }
+    header nav a {
+      font-size: 13px; color: var(--gray-500); text-decoration: none;
+      padding: 5px 10px; border-radius: 6px;
+      transition: color .15s, background .15s;
+    }
+    header nav a:hover { color: var(--blue); background: var(--blue-light); }
+    header nav a.active { color: var(--blue-dark); font-weight: 600; }
+
+    /* ── Main ── */
+    main { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
+
+    /* ── Upload ── */
+    #drop-zone {
+      border: 2px dashed var(--gray-200);
+      border-radius: 16px;
+      background: #fff;
+      padding: 56px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      user-select: none;
+    }
+    #drop-zone.drag-over { border-color: var(--blue); background: var(--blue-light); }
+    #drop-zone .dz-icon { font-size: 44px; margin-bottom: 14px; display: block; }
+    #drop-zone h2 { font-size: 19px; font-weight: 700; color: var(--gray-700); margin-bottom: 6px; }
+    #drop-zone .dz-hint { font-size: 13px; color: var(--gray-500); margin-bottom: 16px; }
+    .formats { display: inline-flex; gap: 8px; margin-bottom: 20px; }
+    .formats span {
+      background: var(--gray-100); border-radius: 6px;
+      padding: 3px 10px; font-size: 12px; color: var(--gray-500); font-weight: 500;
+    }
+    #file-input { display: none; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: 8px;
+      padding: 11px 22px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background .2s;
+    }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--gray-200);
+      border-radius: 6px; padding: 6px 14px;
+      font-size: 13px; color: var(--gray-500); cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── File Preview ── */
+    #file-preview {
+      display: none;
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    #file-preview .fp-icon { font-size: 22px; }
+    #file-preview .fp-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--gray-700);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #file-preview .fp-size { font-size: 12px; color: var(--gray-400); }
+    .btn-remove-file {
+      background: transparent; border: none;
+      color: var(--gray-400); cursor: pointer; font-size: 16px;
+      padding: 2px 6px; border-radius: 4px;
+      transition: color .15s, background .15s;
+    }
+    .btn-remove-file:hover { color: var(--red); background: var(--red-light); }
+
+    #upload-actions { margin-top: 16px; display: none; }
+
+    /* ── Loading ── */
+    #loading-section { text-align: center; padding: 80px 0; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--gray-200); border-top-color: var(--blue);
+      border-radius: 50%; animation: spin .8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 15px; color: var(--gray-500); }
+    .loading-sub { font-size: 13px; color: var(--gray-400); margin-top: 6px; }
+
+    /* ── Dashboard Header ── */
+    .results-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    }
+    .results-topbar h2 { font-size: 18px; font-weight: 800; }
+    .topbar-filename {
+      font-size: 13px; color: var(--gray-500);
+      background: var(--gray-100); border-radius: 6px; padding: 4px 10px;
+    }
+
+    /* ── Overall Risk Card ── */
+    #overall-card {
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      border: 2px solid transparent;
+    }
+    #overall-card.safe    { background: var(--green-light);  border-color: var(--green-border); }
+    #overall-card.caution { background: var(--yellow-light); border-color: var(--yellow-border); }
+    #overall-card.critical{ background: var(--red-light);    border-color: var(--red-border); }
+
+    .traffic-light {
+      display: flex; flex-direction: column; gap: 7px; flex-shrink: 0;
+    }
+    .tl-dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      opacity: .2; transition: opacity .3s;
+    }
+    .tl-dot.red-dot    { background: var(--red); }
+    .tl-dot.yellow-dot { background: var(--yellow); }
+    .tl-dot.green-dot  { background: var(--green); }
+    .safe    .green-dot  { opacity: 1; }
+    .caution .yellow-dot { opacity: 1; }
+    .critical .red-dot   { opacity: 1; }
+
+    .overall-info { flex: 1; }
+    .overall-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--gray-400); margin-bottom: 4px;
+    }
+    .overall-level {
+      font-size: 26px; font-weight: 900; margin-bottom: 8px;
+    }
+    .safe    .overall-level { color: var(--green-dark); }
+    .caution .overall-level { color: var(--yellow-dark); }
+    .critical .overall-level { color: var(--red-dark); }
+    .overall-summary { font-size: 14px; color: var(--gray-700); line-height: 1.8; }
+
+    /* ── Risk Score Row ── */
+    .risk-scores {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-bottom: 24px;
+    }
+    .score-chip {
+      background: #fff; border-radius: 10px;
+      border: 1px solid var(--gray-200);
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .score-chip:hover { box-shadow: 0 3px 10px rgba(0,0,0,.08); }
+    .score-chip.safe    { border-left: 4px solid var(--green); }
+    .score-chip.caution { border-left: 4px solid var(--yellow); }
+    .score-chip.critical{ border-left: 4px solid var(--red); }
+    .chip-icon { font-size: 18px; flex-shrink: 0; }
+    .chip-info { flex: 1; min-width: 0; }
+    .chip-name { font-size: 12px; color: var(--gray-500); margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chip-level { font-size: 13px; font-weight: 700; }
+    .safe    .chip-level { color: var(--green-dark); }
+    .caution .chip-level { color: var(--yellow-dark); }
+    .critical .chip-level { color: var(--red-dark); }
+    .chip-arrow { font-size: 12px; color: var(--gray-300); flex-shrink: 0; }
+
+    /* ── Analysis Cards ── */
+    .section-title {
+      font-size: 13px; font-weight: 700; color: var(--gray-400);
+      text-transform: uppercase; letter-spacing: .6px;
+      margin-bottom: 14px;
+    }
+
+    .analysis-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 14px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+      scroll-margin-top: 80px;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s;
+    }
+    .card-header:hover { background: var(--gray-50); }
+
+    .risk-badge {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .5px; padding: 4px 12px; border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .risk-badge.safe     { background: var(--green-light);  color: var(--green-dark); }
+    .risk-badge.caution  { background: var(--yellow-light); color: var(--yellow-dark); }
+    .risk-badge.critical { background: var(--red-light);    color: var(--red-dark); }
+
+    .card-title { font-size: 15px; font-weight: 700; flex: 1; }
+    .card-chevron { font-size: 11px; color: var(--gray-400); transition: transform .2s; }
+    .analysis-card.open .card-chevron { transform: rotate(180deg); }
+
+    .card-body {
+      display: none;
+      padding: 0 20px 20px;
+      border-top: 1px solid var(--gray-100);
+    }
+    .analysis-card.open .card-body { display: block; }
+
+    .body-section { margin-top: 16px; }
+    .body-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--gray-400); margin-bottom: 8px;
+    }
+    .clause-box {
+      background: var(--gray-50); border-left: 3px solid var(--gray-300);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 14px;
+      font-size: 13px; line-height: 1.75;
+      color: var(--gray-700); font-family: "Georgia", serif;
+    }
+    .analysis-card.safe .clause-box     { border-left-color: var(--green); }
+    .analysis-card.caution .clause-box  { border-left-color: var(--yellow); }
+    .analysis-card.critical .clause-box { border-left-color: var(--red); }
+
+    .comment-text {
+      font-size: 13px; color: var(--gray-600); line-height: 1.75;
+    }
+
+    .suggestion-box {
+      background: var(--blue-light);
+      border: 1px solid var(--blue-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .suggestion-text {
+      font-size: 13px; color: #1e40af; line-height: 1.75;
+      margin-bottom: 12px;
+    }
+    .btn-copy {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #fff; border: 1px solid var(--blue-border);
+      border-radius: 7px; padding: 7px 16px;
+      font-size: 13px; font-weight: 600; color: var(--blue-dark);
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-copy:hover { background: #dbeafe; }
+    .btn-copy.copied { background: var(--green-light); border-color: var(--green-border); color: var(--green-dark); }
+
+    /* ── Error ── */
+    #error-section {
+      background: var(--red-light); border: 1px solid var(--red-border);
+      border-radius: 12px; padding: 28px; text-align: center; color: var(--red);
+    }
+    #error-section p { font-size: 15px; margin-bottom: 14px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .risk-scores { grid-template-columns: 1fr; }
+      #overall-card { flex-direction: column; text-align: center; }
+      .traffic-light { flex-direction: row; }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: slideIn .2s ease; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚖</div>
+  <h1>合約法務工具</h1>
+  <nav>
+    <a href="analyze.html" class="active">風險分析</a>
+    <a href="index.html">合約比對</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── Upload Section ── -->
+  <section id="upload-section">
+    <div id="drop-zone" role="button" tabindex="0" aria-label="上傳合約檔案">
+      <span class="dz-icon">📋</span>
+      <h2>上傳合約進行風險分析</h2>
+      <p class="dz-hint">拖放檔案至此，或點擊選擇檔案</p>
+      <div class="formats">
+        <span>📝 .docx</span>
+        <span>📕 .pdf</span>
+      </div>
+      <label class="btn-primary" for="file-input">&#128194; 選擇合約檔案</label>
+      <input type="file" id="file-input" accept=".pdf,.docx" />
+    </div>
+
+    <div id="file-preview">
+      <span class="fp-icon" id="fp-icon"></span>
+      <span class="fp-name" id="fp-name"></span>
+      <span class="fp-size" id="fp-size"></span>
+      <button class="btn-remove-file" id="btn-remove-file" title="移除">✕</button>
+    </div>
+
+    <div id="upload-actions">
+      <button class="btn-primary" id="btn-analyze">&#128269; 開始風險分析</button>
+    </div>
+  </section>
+
+  <!-- ── Loading ── -->
+  <section id="loading-section" style="display:none">
+    <div class="spinner"></div>
+    <p class="loading-text">AI 法務正在審閱合約中…</p>
+    <p class="loading-sub">正在評估付款、責任與終止條款，請稍候 15–30 秒</p>
+  </section>
+
+  <!-- ── Results ── -->
+  <section id="results-section" style="display:none">
+
+    <div class="results-topbar">
+      <h2>風險分析結果</h2>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span class="topbar-filename" id="result-filename"></span>
+        <button class="btn-ghost" id="btn-reanalyze">&#8635; 重新分析</button>
+      </div>
+    </div>
+
+    <!-- Overall Risk Dashboard -->
+    <div id="overall-card">
+      <div class="traffic-light">
+        <div class="tl-dot red-dot"></div>
+        <div class="tl-dot yellow-dot"></div>
+        <div class="tl-dot green-dot"></div>
+      </div>
+      <div class="overall-info">
+        <div class="overall-label">整體風險等級</div>
+        <div class="overall-level" id="overall-level-text"></div>
+        <div class="overall-summary" id="overall-summary"></div>
+      </div>
+    </div>
+
+    <!-- Score Chips -->
+    <div class="risk-scores" id="risk-scores"></div>
+
+    <!-- Detail Cards -->
+    <div class="section-title">詳細條款分析</div>
+    <div id="analysis-cards"></div>
+
+  </section>
+
+  <!-- ── Error ── -->
+  <section id="error-section" style="display:none">
+    <p id="error-message"></p>
+    <button class="btn-primary" id="btn-error-retry" style="margin: 0 auto;">重新嘗試</button>
+  </section>
+
+</main>
+
+<script>
+  const ANALYZE_URL = 'http://localhost:8000/analyze';
+
+  const RISK_LABELS = { safe: '低風險', caution: '注意', critical: '高風險' };
+  const RISK_ICONS  = { safe: '✅', caution: '⚠️', critical: '🚨' };
+
+  let currentFile = null;
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const uploadSection  = document.getElementById('upload-section');
+  const loadingSection = document.getElementById('loading-section');
+  const resultsSection = document.getElementById('results-section');
+  const errorSection   = document.getElementById('error-section');
+
+  const dropZone       = document.getElementById('drop-zone');
+  const fileInput      = document.getElementById('file-input');
+  const filePreview    = document.getElementById('file-preview');
+  const fpIcon         = document.getElementById('fp-icon');
+  const fpName         = document.getElementById('fp-name');
+  const fpSize         = document.getElementById('fp-size');
+  const btnRemoveFile  = document.getElementById('btn-remove-file');
+  const uploadActions  = document.getElementById('upload-actions');
+  const btnAnalyze     = document.getElementById('btn-analyze');
+
+  const overallCard    = document.getElementById('overall-card');
+  const overallLevel   = document.getElementById('overall-level-text');
+  const overallSummary = document.getElementById('overall-summary');
+  const riskScores     = document.getElementById('risk-scores');
+  const analysisCards  = document.getElementById('analysis-cards');
+  const resultFilename = document.getElementById('result-filename');
+  const btnReanalyze   = document.getElementById('btn-reanalyze');
+  const errorMessage   = document.getElementById('error-message');
+  const btnErrorRetry  = document.getElementById('btn-error-retry');
+
+  // ── Drag & Drop ───────────────────────────────────────────────────────────
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) setFile(files[0]);
+  });
+  dropZone.addEventListener('click', e => {
+    if (e.target.closest('label') || e.target === fileInput) return;
+    fileInput.click();
+  });
+  dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); fileInput.value = ''; });
+
+  btnRemoveFile.addEventListener('click', clearFile);
+  btnAnalyze.addEventListener('click', runAnalysis);
+  btnReanalyze.addEventListener('click', resetToUpload);
+  btnErrorRetry.addEventListener('click', resetToUpload);
+
+  // ── File Management ───────────────────────────────────────────────────────
+  function setFile(f) {
+    const ext = f.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'docx'].includes(ext)) {
+      alert(`不支援的格式：${f.name}\n請使用 .pdf 或 .docx`);
+      return;
+    }
+    currentFile = f;
+    fpIcon.textContent = ext === 'pdf' ? '📕' : '📝';
+    fpName.textContent = f.name;
+    fpSize.textContent = f.size < 1024 * 1024
+      ? (f.size / 1024).toFixed(1) + ' KB'
+      : (f.size / 1024 / 1024).toFixed(2) + ' MB';
+    filePreview.style.display = 'flex';
+    uploadActions.style.display = 'block';
+  }
+
+  function clearFile() {
+    currentFile = null;
+    filePreview.style.display = 'none';
+    uploadActions.style.display = 'none';
+  }
+
+  // ── Analysis ──────────────────────────────────────────────────────────────
+  async function runAnalysis() {
+    if (!currentFile) return;
+    showSection(loadingSection);
+
+    const formData = new FormData();
+    formData.append('file', currentFile);
+
+    try {
+      const res = await fetch(ANALYZE_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '伺服器錯誤');
+      renderResults(data);
+    } catch (err) {
+      showError(`分析失敗：${err.message}`);
+    }
+  }
+
+  // ── Render Results ────────────────────────────────────────────────────────
+  function renderResults(data) {
+    const overall = (data.overall_risk || 'safe').toLowerCase();
+
+    // Filename tag
+    resultFilename.textContent = '📄 ' + (currentFile ? currentFile.name : '');
+
+    // Overall card
+    overallCard.className = overall;
+    overallLevel.textContent = RISK_ICONS[overall] + '  ' + (RISK_LABELS[overall] || overall);
+    overallSummary.textContent = data.summary || '';
+
+    // Score chips
+    riskScores.innerHTML = '';
+    const analyses = data.analyses || [];
+    analyses.forEach((a, i) => {
+      const rl = (a.risk_level || 'safe').toLowerCase();
+      const chip = document.createElement('div');
+      chip.className = 'score-chip ' + rl + ' fade-in';
+      chip.style.animationDelay = (i * 0.06) + 's';
+      chip.innerHTML = `
+        <span class="chip-icon">${RISK_ICONS[rl]}</span>
+        <div class="chip-info">
+          <div class="chip-name">${escHtml(a.name)}</div>
+          <div class="chip-level">${RISK_LABELS[rl] || rl}</div>
+        </div>
+        <span class="chip-arrow">▼</span>`;
+      chip.addEventListener('click', () => scrollToCard(i));
+      riskScores.appendChild(chip);
+    });
+
+    // Detail cards
+    analysisCards.innerHTML = '';
+    analyses.forEach((a, i) => analysisCards.appendChild(buildCard(a, i)));
+
+    showSection(resultsSection);
+  }
+
+  function buildCard(a, idx) {
+    const rl = (a.risk_level || 'safe').toLowerCase();
+    const card = document.createElement('div');
+    card.className = 'analysis-card ' + rl + ' fade-in';
+    card.id = 'card-' + idx;
+    card.style.animationDelay = (idx * 0.08) + 's';
+
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="risk-badge ${rl}">${RISK_ICONS[rl]} ${RISK_LABELS[rl] || rl}</span>
+        <span class="card-title">${escHtml(a.name)}</span>
+        <span class="card-chevron">▼</span>
+      </div>
+      <div class="card-body">
+        <div class="body-section">
+          <div class="body-label">📜 原文條款</div>
+          <div class="clause-box">${escHtml(a.original_clause || '—')}</div>
+        </div>
+        <div class="body-section">
+          <div class="body-label">⚖️ 法務評語</div>
+          <div class="comment-text">${escHtml(a.comment || '—')}</div>
+        </div>
+        <div class="body-section">
+          <div class="body-label">✏️ AI 修改建議</div>
+          <div class="suggestion-box">
+            <div class="suggestion-text">${escHtml(a.suggestion || '—')}</div>
+            <button class="btn-copy" data-text="${escAttr(a.suggestion || '')}">
+              📋 複製修改建議
+            </button>
+          </div>
+        </div>
+      </div>`;
+
+    card.querySelector('.card-header').addEventListener('click', () => {
+      card.classList.toggle('open');
+    });
+
+    card.querySelector('.btn-copy').addEventListener('click', function(e) {
+      e.stopPropagation();
+      copyText(this.dataset.text, this);
+    });
+
+    return card;
+  }
+
+  function scrollToCard(idx) {
+    const card = document.getElementById('card-' + idx);
+    if (!card) return;
+    card.classList.add('open');
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Copy ──────────────────────────────────────────────────────────────────
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => flashCopied(btn))
+      .catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        flashCopied(btn);
+      });
+  }
+  function flashCopied(btn) {
+    const orig = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.textContent = '✓ 已複製！';
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 2000);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function showSection(el) {
+    [uploadSection, loadingSection, resultsSection, errorSection]
+      .forEach(s => s.style.display = 'none');
+    el.style.display = 'block';
+  }
+  function resetToUpload() {
+    clearFile();
+    showSection(uploadSection);
+  }
+  function showError(msg) {
+    errorMessage.textContent = msg;
+    showSection(errorSection);
+  }
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/\n/g, '<br>');
+  }
+  function escAttr(s) {
+    return String(s).replace(/"/g, '&quot;').replace(/\n/g, ' ');
+  }
+</script>
+</body>
+</html>
