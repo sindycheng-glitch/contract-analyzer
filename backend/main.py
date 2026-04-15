@@ -2,6 +2,9 @@ import os
 import io
 import json
 from typing import List
+from dotenv import load_dotenv
+
+load_dotenv()  # 自動讀取 .env 檔
 
 from google import genai
 from google.genai import types
@@ -150,6 +153,10 @@ async def extract_file_content(file: UploadFile) -> tuple[str, bytes | str]:
         detail=f"不支援的檔案格式：{file.filename}（請使用 .pdf 或 .docx）",
     )
 
+
+@app.get("/")
+def root():
+    return {"message": "Contract Analyzer API is running"}
 
 @app.get("/health")
 def health():
