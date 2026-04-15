@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>合約比對分析工具</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:        #3b82f6;
+      --blue-dark:   #1d4ed8;
+      --blue-light:  #eff6ff;
+      --blue-border: #bfdbfe;
+      --orange:        #f97316;
+      --orange-dark:   #c2410c;
+      --orange-light:  #fff7ed;
+      --orange-border: #fed7aa;
+      --green:        #22c55e;
+      --green-light:  #f0fdf4;
+      --green-border: #bbf7d0;
+      --red:          #ef4444;
+      --red-light:    #fef2f2;
+      --red-border:   #fecaca;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+                   "Microsoft JhengHei", sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .logo {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 16px; flex-shrink: 0;
+    }
+    header h1 { font-size: 17px; font-weight: 700; }
+    header .sub { font-size: 12px; color: var(--gray-400); margin-left: auto; }
+
+    /* ── Main ── */
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+
+    /* ── Upload Section ── */
+    #drop-zone {
+      border: 2px dashed var(--gray-200);
+      border-radius: 16px;
+      background: #fff;
+      padding: 56px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      user-select: none;
+    }
+    #drop-zone.drag-over { border-color: var(--blue); background: var(--blue-light); }
+    #drop-zone .dz-icon { font-size: 44px; margin-bottom: 14px; display: block; }
+    #drop-zone h2 { font-size: 19px; font-weight: 700; color: var(--gray-700); margin-bottom: 6px; }
+    #drop-zone .dz-hint { font-size: 13px; color: var(--gray-500); margin-bottom: 6px; }
+    #drop-zone .dz-min { font-size: 12px; color: var(--gray-400); margin-bottom: 20px; }
+    .formats { display: inline-flex; gap: 8px; margin-bottom: 20px; }
+    .formats span {
+      background: var(--gray-100); border-radius: 6px;
+      padding: 3px 10px; font-size: 12px; color: var(--gray-500); font-weight: 500;
+    }
+    #file-input { display: none; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: 8px;
+      padding: 11px 22px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background .2s;
+    }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-primary:disabled {
+      background: var(--gray-300); cursor: not-allowed;
+    }
+
+    /* ── File List ── */
+    #file-list-wrap { margin-top: 16px; }
+    .file-list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .file-list-header span { font-size: 14px; font-weight: 600; color: var(--gray-700); }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--gray-200);
+      border-radius: 6px; padding: 5px 12px;
+      font-size: 12px; color: var(--gray-500); cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      background: #fff; border: 1px solid var(--gray-200);
+      border-radius: 8px; padding: 10px 14px;
+      margin-bottom: 6px;
+      animation: slideIn .15s ease;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
+    .file-icon { font-size: 18px; flex-shrink: 0; }
+    .file-name { flex: 1; font-size: 13px; color: var(--gray-700); font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-size { font-size: 11px; color: var(--gray-400); flex-shrink: 0; }
+    .btn-remove {
+      background: transparent; border: none;
+      color: var(--gray-400); cursor: pointer; font-size: 16px;
+      line-height: 1; padding: 2px 4px; border-radius: 4px;
+      transition: color .15s, background .15s;
+    }
+    .btn-remove:hover { color: var(--red); background: var(--red-light); }
+
+    #upload-actions {
+      margin-top: 20px;
+      display: flex; align-items: center; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .files-needed { font-size: 13px; color: var(--gray-400); }
+    .files-needed.ready { color: #15803d; font-weight: 600; }
+
+    /* ── Loading ── */
+    #loading-section {
+      text-align: center; padding: 80px 0;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--gray-200); border-top-color: var(--blue);
+      border-radius: 50%; animation: spin .8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 15px; color: var(--gray-500); }
+    .loading-sub { font-size: 13px; color: var(--gray-400); margin-top: 6px; }
+
+    /* ── Results Section ── */
+    .results-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .results-topbar h2 { font-size: 18px; font-weight: 800; color: var(--gray-900); }
+    .topbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* Summary Card */
+    #summary-card {
+      background: #fff; border: 1px solid var(--gray-200);
+      border-radius: 14px; padding: 24px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    #summary-card .summary-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--gray-400); margin-bottom: 8px;
+    }
+    #summary-card .summary-body { font-size: 14px; color: var(--gray-700); line-height: 1.8; }
+    #summary-card .file-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .file-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--gray-100); border-radius: 20px;
+      padding: 4px 12px; font-size: 12px; color: var(--gray-500);
+    }
+
+    /* Column legend */
+    .col-legend {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 16px;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 10px;
+      background: #fff; border: 1px solid var(--gray-200);
+      border-radius: 10px; padding: 12px 16px;
+    }
+    .legend-dot {
+      width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    }
+    .legend-dot.party-a { background: var(--blue); }
+    .legend-dot.party-b { background: var(--orange); }
+    .legend-text { font-size: 13px; }
+    .legend-text strong { font-weight: 700; display: block; font-size: 14px; }
+    .legend-text span { color: var(--gray-500); font-size: 12px; }
+
+    /* Diff Cards */
+    .section-title {
+      font-size: 14px; font-weight: 700; color: var(--gray-500);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .diff-count {
+      background: var(--blue-light); color: var(--blue);
+      border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700;
+    }
+
+    .diff-card {
+      background: #fff; border: 1px solid var(--gray-200);
+      border-radius: 14px; margin-bottom: 14px; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+      transition: box-shadow .2s;
+    }
+    .diff-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,.08); }
+
+    .diff-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .diff-category {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; padding: 3px 10px; border-radius: 10px;
+      background: var(--blue-light); color: var(--blue-dark);
+      flex-shrink: 0;
+    }
+    .diff-description { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+
+    .diff-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+    }
+
+    .diff-col { padding: 18px 20px; }
+    .diff-col.col-a {
+      border-right: 1px solid var(--gray-100);
+      background: #f0f9ff;
+    }
+    .diff-col.col-b { background: #fff7ed; }
+
+    .col-label {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .6px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .col-a .col-label { color: var(--blue-dark); }
+    .col-b .col-label { color: var(--orange-dark); }
+
+    .col-badge {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .col-a .col-badge { background: var(--blue); }
+    .col-b .col-badge { background: var(--orange); }
+
+    .source-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; color: var(--gray-400);
+      background: rgba(255,255,255,.8); border: 1px solid var(--gray-200);
+      border-radius: 4px; padding: 2px 8px; margin-bottom: 10px;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .clause-box {
+      background: rgba(255,255,255,.75); border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.07);
+      padding: 10px 12px; margin-bottom: 10px;
+      font-size: 13px; line-height: 1.7;
+      color: var(--gray-700); font-family: "Georgia", serif;
+    }
+    .comment-text {
+      font-size: 12px; color: var(--gray-500);
+      line-height: 1.6; font-style: italic;
+    }
+    .col-blank {
+      background: var(--gray-50);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px;
+    }
+    .col-blank .col-label { opacity: .35; }
+    .col-blank::after {
+      content: "—";
+      font-size: 22px; color: var(--gray-300);
+      margin-top: 8px;
+    }
+
+    /* Suggestion panel */
+    .diff-footer {
+      padding: 10px 20px;
+      border-top: 1px solid var(--gray-100);
+      background: var(--gray-50);
+    }
+    .btn-toggle {
+      background: transparent; border: 1px solid var(--gray-200);
+      border-radius: 6px; padding: 6px 14px;
+      font-size: 12px; color: var(--gray-500);
+      cursor: pointer; transition: all .2s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-toggle:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-toggle.open { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+    .chevron { font-size: 9px; transition: transform .2s; display: inline-block; }
+    .btn-toggle.open .chevron { transform: rotate(180deg); }
+
+    .suggestion-panel {
+      display: none;
+      padding: 16px 20px;
+      border-top: 1px solid var(--blue-border);
+      background: var(--blue-light);
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .suggestion-panel.open { display: flex; }
+    .suggestion-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--blue); margin-bottom: 6px;
+    }
+    .suggestion-text {
+      flex: 1; font-size: 13px; color: #1e40af; line-height: 1.75;
+    }
+    .btn-copy {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+      background: #fff; border: 1px solid var(--blue-border);
+      border-radius: 7px; padding: 8px 16px;
+      font-size: 13px; font-weight: 600; color: var(--blue-dark);
+      cursor: pointer; transition: all .2s; white-space: nowrap; align-self: flex-start;
+    }
+    .btn-copy:hover { background: #dbeafe; }
+    .btn-copy.copied { background: var(--green-light); border-color: var(--green-border); color: #15803d; }
+
+    /* Copy All */
+    .copy-all-bar {
+      display: flex; justify-content: flex-end;
+      margin-bottom: 16px;
+    }
+    .btn-copy-all {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; border: 1.5px solid var(--blue);
+      color: var(--blue); border-radius: 8px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-copy-all:hover { background: var(--blue-light); }
+    .btn-copy-all.copied { background: var(--green-light); border-color: var(--green); color: #15803d; }
+
+    /* Error */
+    #error-section {
+      background: var(--red-light); border: 1px solid var(--red-border);
+      border-radius: 12px; padding: 28px; text-align: center; color: var(--red);
+    }
+    #error-section p { font-size: 15px; margin-bottom: 14px; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .diff-grid { grid-template-columns: 1fr; }
+      .diff-col.col-a { border-right: none; border-bottom: 1px solid var(--gray-100); }
+      .col-legend { grid-template-columns: 1fr; }
+      .suggestion-panel { flex-direction: column; }
+      .btn-copy { align-self: flex-end; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚖</div>
+  <h1>合約比對分析工具</h1>
+  <span class="sub">Contract Comparison · Powered by Gemini AI</span>
+</header>
+
+<main>
+
+  <!-- ── Upload Section ── -->
+  <section id="upload-section">
+    <div id="drop-zone" role="button" tabindex="0" aria-label="上傳合約檔案">
+      <span class="dz-icon">📂</span>
+      <h2>上傳合約檔案進行比對分析</h2>
+      <p class="dz-hint">拖放多個檔案至此區域，或點擊下方按鈕選擇</p>
+      <p class="dz-min">最少需上傳 2 份合約</p>
+      <div class="formats">
+        <span>📝 .docx</span>
+        <span>📕 .pdf</span>
+      </div>
+      <br/>
+      <label class="btn-primary" for="file-input">
+        &#128194; 選擇合約檔案
+      </label>
+      <input type="file" id="file-input" accept=".pdf,.docx" multiple />
+    </div>
+
+    <div id="file-list-wrap" style="display:none">
+      <div class="file-list-header">
+        <span id="file-count-label">已選擇 0 份合約</span>
+        <button class="btn-ghost" id="btn-add-more">+ 新增更多</button>
+      </div>
+      <div id="file-list"></div>
+    </div>
+
+    <div id="upload-actions" style="display:none">
+      <button class="btn-primary" id="btn-analyze" disabled>
+        &#128269; 開始比對分析
+      </button>
+      <span class="files-needed" id="files-needed-hint">請再新增 1 份合約</span>
+    </div>
+  </section>
+
+  <!-- ── Loading ── -->
+  <section id="loading-section" style="display:none">
+    <div class="spinner"></div>
+    <p class="loading-text">AI 法務正在比對合約中…</p>
+    <p class="loading-sub">分析多份合約可能需要 15–30 秒，請稍候</p>
+  </section>
+
+  <!-- ── Results ── -->
+  <section id="results-section" style="display:none">
+
+    <div class="results-topbar">
+      <h2>合約比對結果</h2>
+      <div class="topbar-actions">
+        <button class="btn-copy-all" id="btn-copy-all">&#128203; 複製全部修改建議</button>
+        <button class="btn-ghost" id="btn-recompare">&#8635; 重新比對</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div id="summary-card">
+      <div class="summary-label">整體比較摘要</div>
+      <div class="summary-body" id="summary-body"></div>
+      <div class="file-tags" id="file-tags"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="col-legend">
+      <div class="legend-item">
+        <div class="legend-dot party-a"></div>
+        <div class="legend-text">
+          <strong>甲方較有利版本</strong>
+          <span>對買方／委託方／發包方有利的條款</span>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot party-b"></div>
+        <div class="legend-text">
+          <strong>乙方較有利版本</strong>
+          <span>對賣方／承接方／廠商有利的條款</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Copy All -->
+    <div class="copy-all-bar" style="display:none" id="copy-all-bar">
+      <button class="btn-copy-all" id="btn-copy-all-2">&#128203; 複製全部修改建議</button>
+    </div>
+
+    <!-- Diff cards -->
+    <div class="section-title">
+      差異條款分析
+      <span class="diff-count" id="diff-count"></span>
+    </div>
+    <div id="diff-cards"></div>
+
+  </section>
+
+  <!-- ── Error ── -->
+  <section id="error-section" style="display:none">
+    <p id="error-message"></p>
+    <button class="btn-primary" id="btn-error-retry" style="margin: 0 auto;">重新嘗試</button>
+  </section>
+
+</main>
+
+<script>
+  const COMPARE_URL = 'RENDER_BACKEND_URL/compare';
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let selectedFiles = [];
+  let comparisonData = null;
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+  const uploadSection   = document.getElementById('upload-section');
+  const loadingSection  = document.getElementById('loading-section');
+  const resultsSection  = document.getElementById('results-section');
+  const errorSection    = document.getElementById('error-section');
+
+  const dropZone        = document.getElementById('drop-zone');
+  const fileInput       = document.getElementById('file-input');
+  const fileListWrap    = document.getElementById('file-list-wrap');
+  const fileListEl      = document.getElementById('file-list');
+  const fileCountLabel  = document.getElementById('file-count-label');
+  const uploadActions   = document.getElementById('upload-actions');
+  const btnAnalyze      = document.getElementById('btn-analyze');
+  const filesNeeded     = document.getElementById('files-needed-hint');
+  const btnAddMore      = document.getElementById('btn-add-more');
+
+  const summaryBody     = document.getElementById('summary-body');
+  const fileTagsEl      = document.getElementById('file-tags');
+  const diffCardsEl     = document.getElementById('diff-cards');
+  const diffCount       = document.getElementById('diff-count');
+  const btnCopyAll      = document.getElementById('btn-copy-all');
+  const btnCopyAll2     = document.getElementById('btn-copy-all-2');
+  const copyAllBar      = document.getElementById('copy-all-bar');
+  const btnRecompare    = document.getElementById('btn-recompare');
+  const errorMessage    = document.getElementById('error-message');
+  const btnErrorRetry   = document.getElementById('btn-error-retry');
+
+  // ── Drag & Drop ──────────────────────────────────────────────────────────
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault(); dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    addFiles(Array.from(e.dataTransfer.files));
+  });
+  dropZone.addEventListener('click', e => {
+    if (e.target.closest('label') || e.target === fileInput) return;
+    fileInput.click();
+  });
+  dropZone.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') fileInput.click();
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) addFiles(Array.from(fileInput.files));
+    fileInput.value = '';
+  });
+
+  btnAddMore.addEventListener('click', () => fileInput.click());
+  btnAnalyze.addEventListener('click', runAnalysis);
+  btnRecompare.addEventListener('click', resetToUpload);
+  btnErrorRetry.addEventListener('click', resetToUpload);
+  btnCopyAll.addEventListener('click', copyAll);
+  btnCopyAll2.addEventListener('click', copyAll);
+
+  // ── File Management ───────────────────────────────────────────────────────
+  function addFiles(files) {
+    let added = 0;
+    for (const f of files) {
+      const ext = f.name.split('.').pop().toLowerCase();
+      if (!['pdf', 'docx'].includes(ext)) {
+        alert(`不支援的格式：${f.name}\n請使用 .pdf 或 .docx 檔案`);
+        continue;
+      }
+      if (selectedFiles.some(e => e.name === f.name && e.size === f.size)) continue;
+      selectedFiles.push(f);
+      added++;
+    }
+    if (added > 0) renderFileList();
+  }
+
+  function removeFile(idx) {
+    selectedFiles.splice(idx, 1);
+    renderFileList();
+  }
+
+  function renderFileList() {
+    if (selectedFiles.length === 0) {
+      fileListWrap.style.display = 'none';
+      uploadActions.style.display = 'none';
+      return;
+    }
+
+    fileListWrap.style.display = 'block';
+    uploadActions.style.display = 'flex';
+
+    fileCountLabel.textContent = `已選擇 ${selectedFiles.length} 份合約`;
+
+    fileListEl.innerHTML = '';
+    selectedFiles.forEach((f, i) => {
+      const ext = f.name.split('.').pop().toLowerCase();
+      const icon = ext === 'pdf' ? '📕' : '📝';
+      const size = f.size < 1024 * 1024
+        ? (f.size / 1024).toFixed(1) + ' KB'
+        : (f.size / 1024 / 1024).toFixed(2) + ' MB';
+
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `
+        <span class="file-icon">${icon}</span>
+        <span class="file-name" title="${escHtml(f.name)}">${escHtml(f.name)}</span>
+        <span class="file-size">${size}</span>
+        <button class="btn-remove" title="移除" data-idx="${i}">✕</button>`;
+      item.querySelector('.btn-remove').addEventListener('click', () => removeFile(i));
+      fileListEl.appendChild(item);
+    });
+
+    const ready = selectedFiles.length >= 2;
+    btnAnalyze.disabled = !ready;
+    filesNeeded.textContent = ready
+      ? `✓ 已準備好比對 ${selectedFiles.length} 份合約`
+      : `請再新增 ${2 - selectedFiles.length} 份合約`;
+    filesNeeded.className = 'files-needed' + (ready ? ' ready' : '');
+  }
+
+  // ── Analysis ─────────────────────────────────────────────────────────────
+  async function runAnalysis() {
+    showSection(loadingSection);
+
+    const formData = new FormData();
+    selectedFiles.forEach(f => formData.append('files', f));
+
+    try {
+      const res = await fetch(COMPARE_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '伺服器錯誤');
+      comparisonData = data;
+      renderResults(data);
+    } catch (err) {
+      showError(`比對失敗：${err.message}`);
+    }
+  }
+
+  // ── Render Results ────────────────────────────────────────────────────────
+  function renderResults(data) {
+    summaryBody.textContent = data.summary || '';
+
+    fileTagsEl.innerHTML = '';
+    selectedFiles.forEach(f => {
+      const tag = document.createElement('span');
+      tag.className = 'file-tag';
+      tag.textContent = '📄 ' + f.name;
+      fileTagsEl.appendChild(tag);
+    });
+
+    const diffs = data.differences || [];
+    diffCount.textContent = diffs.length + ' 項差異';
+
+    diffCardsEl.innerHTML = '';
+    diffs.forEach((d, i) => diffCardsEl.appendChild(buildDiffCard(d, i)));
+
+    if (diffs.length > 3) copyAllBar.style.display = 'flex';
+
+    showSection(resultsSection);
+  }
+
+  function buildDiffCard(d, idx) {
+    const card = document.createElement('div');
+    card.className = 'diff-card';
+
+    const aFav = d.party_a_favorable || {};
+    const bFav = d.party_b_favorable || {};
+    const suggestion = d.ai_suggestion || '';
+    const primary = d.primary_beneficiary || 'party_a';
+
+    const colAContent = primary === 'party_a' ? `
+      <div class="source-tag">📄 ${escHtml(aFav.source || '—')}</div>
+      <div class="clause-box">${escHtml(aFav.clause || '—')}</div>
+      <div class="comment-text">${escHtml(aFav.comment || '')}</div>` : '';
+
+    const colBContent = primary === 'party_b' ? `
+      <div class="source-tag">📄 ${escHtml(bFav.source || '—')}</div>
+      <div class="clause-box">${escHtml(bFav.clause || '—')}</div>
+      <div class="comment-text">${escHtml(bFav.comment || '')}</div>` : '';
+
+    card.innerHTML = `
+      <div class="diff-header">
+        <span class="diff-category">${escHtml(d.category || '')}</span>
+        <span class="diff-description">${escHtml(d.description || '')}</span>
+      </div>
+      <div class="diff-grid">
+        <div class="diff-col col-a ${primary !== 'party_a' ? 'col-blank' : ''}">
+          <div class="col-label">
+            <span class="col-badge"></span>
+            甲方（買方）較有利
+          </div>
+          ${colAContent}
+        </div>
+        <div class="diff-col col-b ${primary !== 'party_b' ? 'col-blank' : ''}">
+          <div class="col-label">
+            <span class="col-badge"></span>
+            乙方（廠商）較有利
+          </div>
+          ${colBContent}
+        </div>
+      </div>
+      <div class="diff-footer">
+        <button class="btn-toggle" data-idx="${idx}">
+          <span class="chevron">▼</span> AI 建議
+        </button>
+      </div>
+      <div class="suggestion-panel" id="suggestion-${idx}">
+        <div class="suggestion-text">
+          <div class="suggestion-label">AI 修改建議</div>
+          ${escHtml(suggestion)}
+        </div>
+        <button class="btn-copy" data-suggestion="${escAttr(suggestion)}">
+          &#128203; 複製修改建議
+        </button>
+      </div>`;
+
+    card.querySelector('.btn-toggle').addEventListener('click', function() {
+      const panel = document.getElementById('suggestion-' + idx);
+      const open = panel.classList.toggle('open');
+      this.classList.toggle('open', open);
+    });
+
+    card.querySelector('.btn-copy').addEventListener('click', function(e) {
+      e.stopPropagation();
+      copyText(this.dataset.suggestion, this);
+    });
+
+    return card;
+  }
+
+  // ── Copy helpers ──────────────────────────────────────────────────────────
+  function copyAll() {
+    if (!comparisonData) return;
+    const diffs = comparisonData.differences || [];
+    const lines = diffs.map((d, i) =>
+      `【${d.category}】${d.description}\n修改建議：${d.ai_suggestion || ''}`
+    );
+    const text =
+      `合約比對分析 — 全部修改建議\n` +
+      `比對檔案：${selectedFiles.map(f => f.name).join('、')}\n` +
+      `${'─'.repeat(50)}\n\n` +
+      lines.join('\n\n');
+    const btn = document.activeElement;
+    copyText(text, btn instanceof HTMLButtonElement ? btn : btnCopyAll);
+  }
+
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = btn.innerHTML.replace(/複製.*/, '已複製！');
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 2000);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+  }
+
+  // ── Section visibility ────────────────────────────────────────────────────
+  function showSection(el) {
+    [uploadSection, loadingSection, resultsSection, errorSection]
+      .forEach(s => s.style.display = 'none');
+    el.style.display = 'block';
+  }
+
+  function resetToUpload() {
+    selectedFiles = [];
+    comparisonData = null;
+    renderFileList();
+    showSection(uploadSection);
+  }
+
+  function showError(msg) {
+    errorMessage.textContent = msg;
+    showSection(errorSection);
+  }
+
+  // ── Utilities ─────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/\n/g, '<br>');
+  }
+  function escAttr(s) {
+    return String(s).replace(/"/g, '&quot;').replace(/\n/g, ' ');
+  }
+</script>
+</body>
+</html>
